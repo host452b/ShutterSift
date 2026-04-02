@@ -32,6 +32,10 @@ def group_bursts(
     current_group: list[Path] = [timed[0][1]]
     prev_ts = timed[0][0]
 
+    # Sliding-window burst detection: each photo is compared to the immediately
+    # preceding photo (not the burst start). This correctly handles rapid-fire
+    # bursts but allows slow photo trains to chain — acceptable for the intended
+    # use case of burst fire detection.
     for ts, p in timed[1:]:
         delta = (ts - prev_ts).total_seconds()
         if delta <= gap_seconds:
