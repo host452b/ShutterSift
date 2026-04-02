@@ -31,3 +31,36 @@ def test_invalid_weights_raise():
     with pytest.raises(ValidationError):
         ScoringWeights(sharpness=0.50, exposure=0.15, aesthetic=0.25,
                        face_quality=0.20, composition=0.10)  # sums to 1.20
+
+def test_config_load_from_cwd_shuttersift_yaml(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    cfg_file = tmp_path / "shuttersift.yaml"
+    cfg_file.write_text("scoring:\n  thresholds:\n    keep: 85\n")
+    cfg = Config.load()
+    assert cfg.thresholds.keep == 85
+
+def test_config_load_from_cwd_config_yaml(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text("scoring:\n  thresholds:\n    keep: 77\n")
+    cfg = Config.load()
+    assert cfg.thresholds.keep == 77
+
+def test_config_load_explicit_path_takes_priority(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "config.yaml").write_text("scoring:\n  thresholds:\n    keep: 77\n")
+    explicit = tmp_path / "explicit.yaml"
+    explicit.write_text("scoring:\n  thresholds:\n    keep: 99\n")
+    cfg = Config.load(explicit)
+    assert cfg.thresholds.keep == 99
+
+def test_config_calibrated_defaults_false():
+    cfg = Config()
+    assert cfg.calibrated is False
+
+def test_config_calibrated_round_trips_yaml(tmp_path):
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text("calibrated: true\nscoring:\n  thresholds:\n    hard_reject_sharpness: 42.3\n")
+    cfg = Config.from_yaml(cfg_file)
+    assert cfg.calibrated is True
+    assert cfg.thresholds.hard_reject_sharpness == 42.3

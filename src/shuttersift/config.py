@@ -38,11 +38,11 @@ class Config(BaseModel):
     log_retention_runs: int = 30
     api_model_anthropic: str = "claude-haiku-4-5-20251001"
     api_model_openai: str = "gpt-4o-mini"
+    calibrated: bool = False  # set True after auto-calibration runs
 
     @classmethod
     def from_yaml(cls, path: Path) -> "Config":
         data: dict[str, Any] = yaml.safe_load(path.read_text()) or {}
-        # Flatten nested 'scoring' key
         scoring = data.pop("scoring", {})
         if "weights" in scoring:
             data["weights"] = scoring["weights"]
@@ -52,10 +52,44 @@ class Config(BaseModel):
 
     @classmethod
     def load(cls, path: Path | None = None) -> "Config":
-        """Load from path, fallback to ~/.shuttersift/config.yaml, then defaults."""
-        candidates = [path] if path else []
-        candidates.append(Path.home() / ".shuttersift" / "config.yaml")
+        """Load config from first found location:
+        1. explicit --config path
+        2. ./shuttersift.yaml
+        3. ./config.yaml
+        4. ~/.shuttersift/config.yaml
+        5. built-in defaults
+        """
+        candidates: list[Path] = []
+        if path:
+            candidates.append(path)
+        candidates += [
+            Path.cwd() / "shuttersift.yaml",
+            Path.cwd() / "config.yaml",
+            Path.home() / ".shuttersift" / "config.yaml",
+        ]
         for p in candidates:
-            if p and p.exists():
+            if p.exists():
                 return cls.from_yaml(p)
         return cls()
+
+    def save_to_user_config(self) -> Path:
+        """Persist this config to ~/.shuttersift/config.yaml and return the path."""
+        import yaml as _yaml
+        dest = Path.home() / ".shuttersift" / "config.yaml"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        data: dict[str, Any] = {
+            "calibrated": self.calibrated,
+            "scoring": {
+                "thresholds": {
+                    "keep": self.thresholds.keep,
+                    "reject": self.thresholds.reject,
+                    "hard_reject_sharpness": self.thresholds.hard_reject_sharpness,
+                    "eye_open_min": self.thresholds.eye_open_min,
+                    "burst_gap_seconds": self.thresholds.burst_gap_seconds,
+                }
+            },
+            "workers": self.workers,
+            "log_retention_runs": self.log_retention_runs,
+        }
+        dest.write_text(_yaml.dump(data, default_flow_style=False))
+        return dest
