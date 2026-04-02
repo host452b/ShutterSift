@@ -29,19 +29,20 @@ class Capabilities:
     gpu: bool
     rawpy: bool
     musiq: bool
-    gguf_vlm: bool
+    gguf_vlm: bool           # True when a local Moondream .mf model + moondream package present
     gguf_model_path: Path | None
     api_vlm: bool
 
     @classmethod
     def detect(cls) -> "Capabilities":
-        gguf_models = list(MODELS_DIR.glob("*.gguf")) if MODELS_DIR.exists() else []
+        # Moondream models use the .mf (Moondream Format) extension
+        mf_models = list(MODELS_DIR.glob("*.mf")) if MODELS_DIR.exists() else []
         return cls(
             gpu=_has_gpu(),
             rawpy=_try_import("rawpy"),
             musiq=_try_import("pyiqa"),
-            gguf_vlm=bool(gguf_models),
-            gguf_model_path=gguf_models[0] if gguf_models else None,
+            gguf_vlm=bool(mf_models) and _try_import("moondream"),
+            gguf_model_path=mf_models[0] if mf_models else None,
             api_vlm=bool(
                 os.getenv("ANTHROPIC_API_KEY") or os.getenv("OPENAI_API_KEY")
             ),
@@ -55,7 +56,7 @@ class Capabilities:
             flag(self.gpu, "GPU"),
             flag(self.rawpy, "RAW"),
             flag(self.musiq, "MUSIQ"),
-            flag(self.gguf_vlm, "GGUF VLM"),
+            flag(self.gguf_vlm, "Local VLM"),
             flag(self.api_vlm, "API VLM"),
         ]
         return "  ".join(parts)
