@@ -101,7 +101,7 @@ class Engine:
                 if r.path in group and r.path != best:
                     r.is_duplicate = True
                     r.decision = "reject"
-                    r.reasons.append("连拍重复（非最优帧）")
+                    r.reasons.append("burst duplicate (not best frame)")
 
         # Stage 6: VLM explanation (optional)
         if explain and (self._caps.gguf_vlm or self._caps.api_vlm):
@@ -127,7 +127,7 @@ class Engine:
         if img is None:
             result.decision = "reject"
             result.error = "Could not load image"
-            result.reasons.append("文件损坏或格式不支持")
+            result.reasons.append("corrupt or unsupported format")
             return result
 
         # Stage 2: technical quality
@@ -140,12 +140,12 @@ class Engine:
         if raw_var < hard_reject_threshold:
             result.decision = "reject"
             result.hard_rejected = True
-            result.reasons.append(f"严重模糊 (Laplacian={raw_var:.1f})")
+            result.reasons.append(f"severe blur (Laplacian={raw_var:.1f})")
             result.score = self._scorer.compute(result.sub_scores)
             return result  # early stop
 
         if expo < 20:
-            result.reasons.append(f"曝光问题 (score={expo:.0f})")
+            result.reasons.append(f"exposure issue (score={expo:.0f})")
 
         # Stage 3: face analysis
         face_result = self._face.analyze(img)
@@ -155,12 +155,12 @@ class Engine:
         if face_result.count > 0 and face_result.all_eyes_closed:
             result.decision = "reject"
             result.hard_rejected = True
-            result.reasons.append("所有人物闭眼")
+            result.reasons.append("all faces have closed eyes")
             result.score = self._scorer.compute(result.sub_scores)
             return result  # early stop
 
         if face_result.count > 0 and face_result.eye_open_score < 0.5:
-            result.reasons.append(f"眼睛半闭 (score={face_result.eye_open_score:.2f})")
+            result.reasons.append(f"eyes partially closed (score={face_result.eye_open_score:.2f})")
 
         # Stage 4: aesthetic + composition
         aesthetic = self._aesthetic.score(img)
@@ -169,7 +169,7 @@ class Engine:
         result.sub_scores.composition = comp
 
         if aesthetic < 30:
-            result.reasons.append(f"美学分低 ({aesthetic:.0f})")
+            result.reasons.append(f"low aesthetic score ({aesthetic:.0f})")
 
         # Final score + decision
         result.score = self._scorer.compute(result.sub_scores)
@@ -197,6 +197,9 @@ class Engine:
             return default
 
         variances = []
+        # Note: These images will be loaded again in the main loop.
+        # With RAW files this doubles I/O for the calibration sample (up to 200 images).
+        # A future optimization could cache loaded images here.
         for p in new_paths[:200]:  # cap at 200 for speed
             img = load_image(p)
             if img is not None:
