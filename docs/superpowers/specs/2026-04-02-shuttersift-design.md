@@ -200,40 +200,170 @@ shuttersift_output/
 
 ## 7. Project Structure
 
+### 7.1 分层架构原则
+
+```
+┌─────────────────────────────────────────────┐
+│            Presentation Layer               │
+│  CLI (typer)  │  Server (FastAPI, future)   │
+└───────────────┼─────────────────────────────┘
+                │  调用 Python API
+┌───────────────▼─────────────────────────────┐
+│              Engine Layer                   │
+│  pipeline · analyzers · scorer · explainer  │
+│  (纯逻辑，无 UI 依赖，可独立测试)              │
+└───────────────┬─────────────────────────────┘
+                │  IPC (localhost HTTP, future)
+┌───────────────▼─────────────────────────────┐
+│             GUI Clients (future)            │
+│   desktop (Tauri/Electron)  │  web          │
+└─────────────────────────────────────────────┘
+```
+
+Engine 层对所有客户端暴露统一的 Python API（`shuttersift.engine`），CLI 是第一个客户端，未来 GUI 通过本地 FastAPI server 调用同一 engine。
+
+### 7.2 目录结构
+
 ```
 ShutterSift/
 ├── src/shuttersift/
-│   ├── __init__.py
-│   ├── __main__.py          # typer CLI 入口
-│   ├── config.py            # Pydantic 配置 + 默认阈值
-│   ├── pipeline.py          # 主编排器（6 阶段）
-│   ├── capabilities.py      # 运行时硬件/模型探测
-│   ├── loader.py            # RAW/JPEG 统一加载
-│   ├── scorer.py            # 加权合分 + 决策逻辑
-│   ├── analyzers/
-│   │   ├── sharpness.py
-│   │   ├── exposure.py
-│   │   ├── face.py          # MediaPipe 封装
-│   │   ├── aesthetic.py     # MUSIQ / BRISQUE
-│   │   ├── composition.py   # 规则引擎
-│   │   └── duplicates.py   # pHash + burst 分组
-│   ├── explainer.py         # GGUF / API VLM
-│   ├── organizer.py         # 文件分类 + XMP sidecar
-│   ├── reporter.py          # HTML + JSON 报告
-│   └── downloader.py        # HF 模型下载
+│   │
+│   ├── engine/                  # ★ 核心引擎，无 UI 依赖
+│   │   ├── __init__.py          #   暴露 Engine 公共 API
+│   │   ├── pipeline.py          #   主编排器（6 阶段）
+│   │   ├── capabilities.py      #   运行时硬件/模型探测
+│   │   ├── loader.py            #   RAW/JPEG 统一加载
+│   │   ├── scorer.py            #   加权合分 + 决策逻辑
+│   │   ├── organizer.py         #   文件分类 + XMP sidecar
+│   │   ├── reporter.py          #   HTML + JSON 报告
+│   │   ├── downloader.py        #   HF 模型下载 + SHA256 校验
+│   │   ├── explainer.py         #   GGUF / API VLM
+│   │   ├── state.py             #   断点续传 .state.json 管理
+│   │   └── analyzers/
+│   │       ├── sharpness.py
+│   │       ├── exposure.py
+│   │       ├── face.py
+│   │       ├── aesthetic.py
+│   │       ├── composition.py
+│   │       └── duplicates.py
+│   │
+│   ├── cli/                     # CLI 表现层
+│   │   ├── __init__.py
+│   │   └── main.py              #   typer app，调用 engine API
+│   │
+│   ├── server/                  # ★ 预留：本地 HTTP server（GUI 桥接层）
+│   │   ├── __init__.py          #   空，占位
+│   │   ├── app.py               #   FastAPI app 骨架（注释状态）
+│   │   └── README.md            #   说明：GUI 客户端通过此 server 与 engine 通信
+│   │
+│   ├── config.py                # Pydantic 配置模型 + 默认阈值
+│   └── __init__.py
+│
+├── clients/                     # ★ 预留：GUI 客户端
+│   ├── desktop/                 #   未来 Tauri / Electron 桌面应用
+│   │   └── README.md            #   说明：调用 shuttersift server 的桌面客户端
+│   └── web/                     #   未来 Web UI（Gradio / 自定义）
+│       └── README.md
+│
 ├── templates/
 │   └── report.html.j2
 ├── docs/superpowers/specs/
-│   └── 2026-04-02-shuttersift-design.md
 ├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── fixtures/                # 测试用小图（含各类问题照片样本）
 ├── pyproject.toml
-├── config.yaml              # 默认配置示例
+├── config.yaml
 └── README.md
 ```
 
+### 7.3 engine 公共 API 契约（CLI 和未来 GUI 共用）
+
+```python
+# src/shuttersift/engine/__init__.py
+from .pipeline import Engine, AnalysisResult, PhotoResult
+
+class Engine:
+    def __init__(self, config: Config): ...
+    
+    def analyze(
+        self,
+        input_dir: Path,
+        output_dir: Path,
+        on_progress: Callable[[int, int, PhotoResult], None] | None = None,
+        resume: bool = True,
+    ) -> AnalysisResult: ...
+    
+    def capabilities(self) -> dict: ...   # GPU/VLM/RAW 探测结果
+```
+
+`on_progress` 回调使 CLI 能更新进度条、未来 GUI 能推送 WebSocket 事件——**接口不变，展示层自由替换**。
+
 ---
 
-## 8. Key Design Decisions & Rationale
+## 8. Commercial-Grade Requirements
+
+### 8.1 断点续传
+
+每张照片完成分析后立即写入 `output/.state.json`。下次运行检测到 state 文件时默认 resume，用 `--fresh` 强制重跑。state 文件包含：文件路径、mtime、综合分、决策、各子分。
+
+### 8.2 重复运行策略
+
+- 默认：检测到 `output/.state.json` → 跳过已处理文件，只处理新增/修改文件
+- `--fresh`：忽略 state，全量重跑，覆盖输出
+- 输出目录已存在但无 state 文件：警告用户，不自动覆盖
+
+### 8.3 清晰度阈值自动校准
+
+固定阈值 30 在不同相机/镜头上误差大。解决方案：
+
+- 首次运行时采样输入目录中最清晰的 5% 照片，计算 Laplacian 分布
+- 将 `hard_reject` 阈值设为 `p5`（第 5 百分位），`soft_warn` 设为 `p20`
+- 校准结果缓存到 `~/.shuttersift/calibration/<camera_model>.json`
+- 用户可运行 `shuttersift calibrate ./photos` 手动触发
+
+### 8.4 Apple Silicon 安装
+
+`pyproject.toml` 使用 platform marker 自动选包：
+
+```toml
+dependencies = [
+  "mediapipe; platform_machine != 'arm64'",
+  "mediapipe-silicon; platform_machine == 'arm64'",
+  ...
+]
+```
+
+### 8.5 结构化日志
+
+每次运行写入 `~/.shuttersift/logs/YYYY-MM-DDTHH-MM-SS.log`，内容包含：
+- 每张照片各子分原始值
+- 使用的降级路径（MUSIQ/BRISQUE、GGUF/API/无）
+- 异常堆栈（文件损坏、模型加载失败等）
+- 各阶段耗时（便于性能排查）
+
+日志保留最近 30 次，自动清理。
+
+### 8.6 模型完整性校验
+
+`downloader.py` 下载模型后验证 SHA256，失败则自动重试（最多 3 次）后报错。校验摘要硬编码在 `downloader.py` 中，随版本更新。
+
+### 8.7 results.json 版本化
+
+```json
+{
+  "version": "1",
+  "shuttersift_version": "0.1.0",
+  "run_at": "2026-04-02T14:30:00Z",
+  "photos": [...]
+}
+```
+
+未来版本新增字段时 `version` 递增，读取器向后兼容。
+
+---
+
+## 9. Key Design Decisions & Rationale
 
 | 决策 | 理由 |
 |------|------|
