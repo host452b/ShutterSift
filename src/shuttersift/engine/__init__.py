@@ -1,7 +1,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal, Callable
+from typing import Literal
 import datetime
 
 
@@ -34,7 +34,7 @@ class AnalysisResult:
     version: str = "1"
     shuttersift_version: str = "0.1.0"
     run_at: str = field(
-        default_factory=lambda: datetime.datetime.utcnow().isoformat() + "Z"
+        default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
     )
     photos: list[PhotoResult] = field(default_factory=list)
 

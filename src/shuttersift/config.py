@@ -2,10 +2,11 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 import yaml
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, ConfigDict
 
 
 class ScoringWeights(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     sharpness: float = 0.30
     exposure: float = 0.15
     aesthetic: float = 0.25
@@ -21,6 +22,7 @@ class ScoringWeights(BaseModel):
 
 
 class Thresholds(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     keep: int = 70
     reject: int = 40
     hard_reject_sharpness: float = 30.0
@@ -29,6 +31,7 @@ class Thresholds(BaseModel):
 
 
 class Config(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     weights: ScoringWeights = ScoringWeights()
     thresholds: Thresholds = Thresholds()
     workers: int = 4
