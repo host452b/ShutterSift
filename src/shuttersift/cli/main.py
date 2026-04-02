@@ -7,7 +7,10 @@ from typing import Optional
 
 import typer
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    Progress, SpinnerColumn, BarColumn, TextColumn,
+    TimeElapsedColumn, TimeRemainingColumn, MofNCompleteColumn,
+)
 from rich.table import Table
 from rich.rule import Rule
 
@@ -144,6 +147,14 @@ def _do_scan(
     console.print(f"\n[bold]ShutterSift[/] v{__version__}")
     console.print(f"Detected: {caps.summary()}\n")
 
+    if not caps.gpu:
+        console.print(
+            "[yellow]⚠  No GPU detected — running on CPU.[/]  "
+            "MUSIQ aesthetic scoring will use BRISQUE fallback and analysis will be slower.\n"
+            "[yellow]   To enable GPU:[/] install a CUDA-enabled torch (Windows/Linux) "
+            "or ensure Metal is available (macOS).\n"
+        )
+
     # Auto-calibration: run on first use or when --recalibrate is passed
     if not cfg.calibrated or recalibrate:
         console.print("[1/3] Detecting capabilities...  ✓")
@@ -158,20 +169,32 @@ def _do_scan(
 
     engine = Engine(cfg)
 
+    _DECISION_STYLE = {"keep": "green", "review": "yellow", "reject": "red"}
+
     with Progress(
         SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TextColumn("{task.completed}/{task.total}"),
+        TextColumn("{task.description}"),
+        BarColumn(bar_width=28),
+        MofNCompleteColumn(),
+        TextColumn("·"),
         TimeElapsedColumn(),
+        TextColumn("· ETA"),
+        TimeRemainingColumn(),
         console=console,
+        expand=False,
     ) as progress:
-        task_id = progress.add_task("Analyzing...", total=None)
+        task_id = progress.add_task("[dim]waiting…[/]", total=None)
 
         def on_progress(current: int, total: int, result: PhotoResult) -> None:
-            progress.update(task_id, completed=current, total=total,
-                            description=f"[cyan]{result.path.name}[/]")
+            style = _DECISION_STYLE.get(result.decision, "white")
+            name = result.path.name
+            if len(name) > 28:
+                name = "…" + name[-27:]
+            desc = f"[cyan]{name}[/]  [[{style}]{result.decision}[/]]"
+            progress.update(task_id, completed=current, total=total, description=desc)
 
+        import time as _time
+        _t0 = _time.perf_counter()
         try:
             result: AnalysisResult = engine.analyze(
                 input_dir=input_dir,
@@ -185,28 +208,77 @@ def _do_scan(
             logging.getLogger(__name__).exception("Engine error")
             console.print(f"[red]Error:[/] {exc or type(exc).__name__}")
             raise typer.Exit(1)
+        _elapsed = _time.perf_counter() - _t0
 
-    _print_summary(result, output_dir, dry_run)
+    _print_summary(result, output_dir, dry_run, _elapsed)
 
 
-def _print_summary(result: AnalysisResult, output_dir: Path, dry_run: bool) -> None:
+_MAX_LIST_ROWS = 25  # max filenames shown per bucket before truncating
+
+
+def _fmt_elapsed(seconds: float) -> str:
+    m, s = divmod(int(seconds), 60)
+    h, m = divmod(m, 60)
+    if h:
+        return f"{h}h {m:02d}m {s:02d}s"
+    if m:
+        return f"{m}m {s:02d}s"
+    return f"{s}s"
+
+
+def _print_bucket(title: str, style: str, photos: list) -> None:
+    if not photos:
+        return
+    console.print(f"\n[bold {style}]{title}[/]  ({len(photos)} photos)")
+    t = Table(box=None, show_header=False, padding=(0, 1))
+    shown = photos[:_MAX_LIST_ROWS]
+    for p in shown:
+        reasons = ", ".join(p.reasons) if p.reasons else ""
+        reason_text = f"[dim]— {reasons}[/]" if reasons else ""
+        t.add_row(
+            f"  [cyan]{p.path.name}[/]",
+            f"[{style}]{p.score:.0f}[/]",
+            reason_text,
+        )
+    if len(photos) > _MAX_LIST_ROWS:
+        t.add_row(f"  [dim]… and {len(photos) - _MAX_LIST_ROWS} more[/]", "", "")
+    console.print(t)
+
+
+def _print_summary(result: AnalysisResult, output_dir: Path, dry_run: bool, elapsed_s: float = 0.0) -> None:
     total = len(result.photos)
     if total == 0:
         console.print("[yellow]No photos found.[/]")
         return
 
+    # ── Timing ────────────────────────────────────────────────────────────────
+    avg_ms = (elapsed_s * 1000 / total) if total else 0.0
+    elapsed_str = _fmt_elapsed(elapsed_s)
+
+    # ── Counts table ──────────────────────────────────────────────────────────
     console.rule()
-    table = Table(show_header=False, box=None, padding=(0, 2))
-    table.add_row("[green]✓  Keep[/]",    str(len(result.keep)),   f"({len(result.keep)/total:.0%})")
-    table.add_row("[yellow]◎  Review[/]", str(len(result.review)), f"({len(result.review)/total:.0%})")
-    table.add_row("[red]✗  Reject[/]",   str(len(result.reject)), f"({len(result.reject)/total:.0%})")
-    console.print(table)
+    tbl = Table(show_header=False, box=None, padding=(0, 2))
+    tbl.add_row("[green]✓  Keep[/]",    str(len(result.keep)),   f"({len(result.keep)/total:.0%})")
+    tbl.add_row("[yellow]◎  Review[/]", str(len(result.review)), f"({len(result.review)/total:.0%})")
+    tbl.add_row("[red]✗  Reject[/]",   str(len(result.reject)), f"({len(result.reject)/total:.0%})")
+    tbl.add_row("", "", "")
+    tbl.add_row("[dim]⏱  Time[/]", f"[dim]{elapsed_str}[/]",
+                f"[dim](avg {avg_ms:.0f} ms/photo)[/]")
+    console.print(tbl)
     console.rule()
+
+    # ── Per-bucket file listings ───────────────────────────────────────────────
+    _print_bucket("✓  Keep",   "green",  result.keep)
+    _print_bucket("◎  Review", "yellow", result.review)
+    _print_bucket("✗  Reject", "red",    result.reject)
+
+    # ── Paths ─────────────────────────────────────────────────────────────────
+    console.print()
     if not dry_run:
-        console.print(f"\nOutput  → [bold]{output_dir}[/]")
+        console.print(f"Output  → [bold]{output_dir}[/]")
         console.print(f"Report  → [bold]{output_dir / 'report.html'}[/]\n")
     else:
-        console.print("\n[yellow]Dry run — no files written[/]\n")
+        console.print("[yellow]Dry run — no files written[/]\n")
 
 
 # ── Default command callback (show help when no args given) ───────────────────
@@ -308,7 +380,8 @@ def info() -> None:
     table.add_column("Status")
     table.add_column("Details")
 
-    table.add_row("GPU",        "[green]✓[/]" if caps.gpu    else "[red]✗[/]", "CUDA or Apple Metal")
+    _gpu_detail = {"cuda": "CUDA", "mps": "Apple Metal (MPS)", "cpu": "none"}.get(caps.gpu_device, caps.gpu_device)
+    table.add_row("GPU", "[green]✓[/]" if caps.gpu else "[red]✗[/]", _gpu_detail)
     table.add_row("RAW decode", "[green]✓[/]" if caps.rawpy  else "[yellow]~[/]", "rawpy" if caps.rawpy else "Using Pillow fallback")
     table.add_row("MUSIQ",      "[green]✓[/]" if caps.musiq  else "[yellow]~[/]", "GPU aesthetic scoring" if caps.musiq else "BRISQUE fallback")
     table.add_row("Local VLM", "[green]✓[/]" if caps.gguf_vlm else "[red]✗[/]",
