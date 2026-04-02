@@ -1,15 +1,16 @@
 from __future__ import annotations
 import json
 import logging
+from importlib.resources import files
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader
+from jinja2 import Environment, BaseLoader
 
 from shuttersift.engine import AnalysisResult
 
 logger = logging.getLogger(__name__)
 
-_TEMPLATES_DIR = Path(__file__).parent.parent.parent.parent / "templates"
+_TEMPLATES_PACKAGE = "shuttersift.templates"
 
 
 def generate_report(result: AnalysisResult, output_dir: Path) -> None:
@@ -49,10 +50,12 @@ def _write_json(result: AnalysisResult, path: Path) -> None:
 
 def _write_html(result: AnalysisResult, path: Path) -> None:
     try:
-        env = Environment(loader=FileSystemLoader(str(_TEMPLATES_DIR)))
-        tmpl = env.get_template("report.html.j2")
+        template_text = files(_TEMPLATES_PACKAGE).joinpath("report.html.j2").read_text(encoding="utf-8")
+        env = Environment(loader=BaseLoader())
+        tmpl = env.from_string(template_text)
         html = tmpl.render(result=result)
         path.write_text(html, encoding="utf-8")
         logger.info("HTML report → %s", path)
     except Exception as e:
         logger.warning("Could not write HTML report: %s", e)
+        raise
