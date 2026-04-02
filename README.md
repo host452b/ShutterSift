@@ -11,6 +11,23 @@ dimensions. Results land in organized folders with an interactive HTML report.
 
 ---
 
+## Platform Support
+
+| Feature | macOS | Linux | Windows |
+|---------|-------|-------|---------|
+| Core scanning | ✅ | ✅ | ✅ |
+| RAW file decode | ✅ | ✅ | ✅ (needs Visual C++ Redistributable) |
+| GPU acceleration | ✅ Metal | ✅ CUDA | ✅ CUDA |
+| Symlinks in output | ✅ | ✅ | ⚠️ Requires Developer Mode or admin |
+| Cloud VLM (`-e`) | ✅ | ✅ | ✅ |
+| Local VLM (`setup --vlm`) | ✅ | ✅ | ✅ |
+| Lightroom XMP import | ✅ | ✅ | ✅ |
+| Python version | 3.11 / 3.12 | 3.11 / 3.12 | 3.11 recommended |
+
+> **mediapipe on Windows:** Python 3.12 may have compatibility issues. Use Python 3.11 if installation fails.
+
+---
+
 ## Install
 
 **From PyPI** (once published):
@@ -39,6 +56,11 @@ pip install git+https://github.com/host452b/ShutterSift.git
 > pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/metal
 > ```
 
+> **Windows:** Python 3.11 is recommended. `mediapipe` may have compatibility
+> issues with Python 3.12 on Windows. Symlinks in the output folders require
+> Developer Mode (`Settings → For developers → Developer Mode`) or running as
+> Administrator — without this, files are copied instead (a warning will appear).
+
 ---
 
 ## Quick Start
@@ -51,8 +73,9 @@ ss setup
 ss ./photos
 
 # Step 3 — open the report
-open shuttersift_output/report.html      # macOS
-xdg-open shuttersift_output/report.html  # Linux
+open shuttersift_output/report.html              # macOS
+xdg-open shuttersift_output/report.html          # Linux
+start shuttersift_output\report.html             # Windows
 ```
 
 Sharpness thresholds are calibrated automatically on first run based on your
