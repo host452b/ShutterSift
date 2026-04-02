@@ -56,10 +56,13 @@ pip install git+https://github.com/host452b/ShutterSift.git
 > pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/metal
 > ```
 
-> **Windows**：推荐使用 Python 3.11。`mediapipe` 在 Python 3.12 + Windows 上
-> 可能存在兼容性问题。输出文件夹中的符号链接需要开启开发者模式
->（`设置 → 隐私和安全性 → 开发者选项 → 开发者模式`）或以管理员身份运行——
-> 否则会自动改为文件复制并显示警告提示。
+> **Windows — 推荐使用 Python 3.11**：`mediapipe` 在 Python 3.12 + Windows 上可能安装失败，改用 3.11 即可解决。
+>
+> **Windows — 符号链接**：输出文件夹默认使用符号链接。如不满足以下条件，会自动改为文件复制（并显示黄色警告）：
+> 1. 打开 **设置 → 隐私和安全性 → 开发者选项**
+> 2. 开启 **开发者模式**
+>
+> 或直接以管理员身份运行终端。
 
 ---
 

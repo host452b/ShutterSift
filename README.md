@@ -56,10 +56,14 @@ pip install git+https://github.com/host452b/ShutterSift.git
 > pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/metal
 > ```
 
-> **Windows:** Python 3.11 is recommended. `mediapipe` may have compatibility
-> issues with Python 3.12 on Windows. Symlinks in the output folders require
-> Developer Mode (`Settings → For developers → Developer Mode`) or running as
-> Administrator — without this, files are copied instead (a warning will appear).
+> **Windows — Python 3.11 recommended:** If `mediapipe` fails on Python 3.12, switch to 3.11.
+>
+> **Windows — symlinks:** Output folders use symlinks by default. Without the steps
+> below, files are copied instead (a yellow warning will appear):
+> 1. Open **Settings → Privacy & Security → For Developers**
+> 2. Enable **Developer Mode**
+>
+> Or simply run your terminal as Administrator.
 
 ---
 
