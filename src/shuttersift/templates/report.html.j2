@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>ShutterSift Report</title>
+  <style>
+    body { font-family: -apple-system, sans-serif; background: #111; color: #eee; margin: 0; padding: 20px; }
+    h1 { color: #fff; }
+    .summary { display: flex; gap: 24px; margin: 20px 0; }
+    .stat { background: #222; border-radius: 8px; padding: 16px 24px; text-align: center; }
+    .stat .num { font-size: 2em; font-weight: bold; }
+    .keep .num { color: #4caf50; }
+    .review .num { color: #ffc107; }
+    .reject .num { color: #f44336; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 20px; }
+    .card { background: #1e1e1e; border-radius: 8px; overflow: hidden; }
+    .card img { width: 100%; height: 160px; object-fit: cover; }
+    .card .info { padding: 8px 10px; font-size: 0.78em; }
+    .card .score { font-size: 1.4em; font-weight: bold; }
+    .card.keep { border-top: 3px solid #4caf50; }
+    .card.review { border-top: 3px solid #ffc107; }
+    .card.reject { border-top: 3px solid #f44336; }
+    .reasons { color: #aaa; margin-top: 4px; }
+    .explanation { color: #ccc; font-style: italic; margin-top: 4px; }
+    .sub { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; margin-top: 6px; font-size: 0.85em; color: #888; }
+    h2 { color: #aaa; margin-top: 32px; border-bottom: 1px solid #333; padding-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <h1>ShutterSift Report</h1>
+  <p style="color:#888">{{ result.run_at }} &nbsp;·&nbsp; {{ result.photos|length }} photos analyzed</p>
+
+  <div class="summary">
+    <div class="stat keep"><div class="num">{{ result.keep|length }}</div><div>Keep</div></div>
+    <div class="stat review"><div class="num">{{ result.review|length }}</div><div>Review</div></div>
+    <div class="stat reject"><div class="num">{{ result.reject|length }}</div><div>Reject</div></div>
+  </div>
+
+  {% for section, photos in [("Keep", result.keep), ("Review", result.review), ("Reject", result.reject)] %}
+  {% if photos %}
+  <h2>{{ section }} ({{ photos|length }})</h2>
+  <div class="grid">
+    {% for p in photos %}
+    <div class="card {{ p.decision }}">
+      <div class="info">
+        <div class="score">{{ "%.1f"|format(p.score) }}</div>
+        <div>{{ p.path.name }}</div>
+        <div class="sub">
+          <span>Sharp: {{ "%.0f"|format(p.sub_scores.sharpness) }}</span>
+          <span>Expo: {{ "%.0f"|format(p.sub_scores.exposure) }}</span>
+          <span>Aesth: {{ "%.0f"|format(p.sub_scores.aesthetic) }}</span>
+          <span>Face: {{ "%.0f"|format(p.sub_scores.face_quality) }}</span>
+        </div>
+        {% if p.reasons %}<div class="reasons">{{ p.reasons | join(", ") }}</div>{% endif %}
+        {% if p.explanation %}<div class="explanation">{{ p.explanation }}</div>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% endfor %}
+</body>
+</html>
