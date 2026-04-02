@@ -127,6 +127,17 @@ def _do_scan(
     if jobs is not None:
         cfg.workers = jobs
 
+    # Validate threshold ordering
+    effective_keep = keep if keep is not None else cfg.thresholds.keep
+    effective_reject = reject if reject is not None else cfg.thresholds.reject
+    if effective_keep <= effective_reject:
+        console.print(
+            f"[red]Error:[/] --keep ({effective_keep}) must be greater than "
+            f"--reject ({effective_reject}). "
+            f"Example: --keep 70 --reject 40"
+        )
+        raise typer.Exit(1)
+
     output_dir = output or (input_dir.parent / "shuttersift_output")
 
     caps = Capabilities.detect()
@@ -251,7 +262,9 @@ def setup(
     step = 1
 
     console.print(f"\n[{step}/{total_steps}] MediaPipe face landmarker")
-    console.print("      Downloading...  [dim](12.4 MB)[/]")
+    from shuttersift.engine.downloader import MODEL_REGISTRY
+    size = MODEL_REGISTRY["mediapipe_face_landmarker"]["size_hint"]
+    console.print(f"      Downloading...  [dim]({size})[/]")
     ok = download_mediapipe_models()
     if ok:
         dest = Path.home() / ".shuttersift" / "models" / "face_landmarker.task"
@@ -298,7 +311,7 @@ def info() -> None:
     table.add_row("GPU",        "[green]✓[/]" if caps.gpu    else "[red]✗[/]", "CUDA or Apple Metal")
     table.add_row("RAW decode", "[green]✓[/]" if caps.rawpy  else "[yellow]~[/]", "rawpy" if caps.rawpy else "Using Pillow fallback")
     table.add_row("MUSIQ",      "[green]✓[/]" if caps.musiq  else "[yellow]~[/]", "GPU aesthetic scoring" if caps.musiq else "BRISQUE fallback")
-    table.add_row("GGUF VLM",  "[green]✓[/]" if caps.gguf_vlm else "[red]✗[/]",
+    table.add_row("Local VLM", "[green]✓[/]" if caps.gguf_vlm else "[red]✗[/]",
                   str(caps.gguf_model_path) if caps.gguf_model_path else "Run: ss setup --vlm")
     table.add_row("API VLM",   "[green]✓[/]" if caps.api_vlm else "[red]✗[/]",
                   "ANTHROPIC_API_KEY or OPENAI_API_KEY set" if caps.api_vlm else "Set ANTHROPIC_API_KEY env var")
