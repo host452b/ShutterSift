@@ -48,6 +48,7 @@ dev = [
 
 [project.scripts]
 shuttersift = "shuttersift.cli.main:app"
+ss = "shuttersift.cli.main:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/shuttersift"]
