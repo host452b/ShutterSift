@@ -100,7 +100,7 @@ def _do_scan(
     explain: bool,
     dry_run: bool,
     force: bool,
-    recal: bool,
+    recalibrate: bool,
     keep: Optional[int],
     reject: Optional[int],
     jobs: Optional[int],
@@ -127,9 +127,9 @@ def _do_scan(
     console.print(f"\n[bold]ShutterSift[/] v{__version__}")
     console.print(f"Detected: {caps.summary()}\n")
 
-    # Auto-calibration: run on first use or when --recal is passed
-    if not cfg.calibrated or recal:
-        label = "Recalibrating" if recal else "Calibrating"
+    # Auto-calibration: run on first use or when --recalibrate is passed
+    if not cfg.calibrated or recalibrate:
+        label = "Recalibrating" if recalibrate else "Calibrating"
         console.print(f"[2/3] {label} sharpness thresholds...")
         cfg = _run_auto_calibration(input_dir, cfg)
         step_prefix = "[3/3]"
@@ -216,7 +216,7 @@ def scan(
     explain: bool = typer.Option(False, "-e", "--explain", help="Enable VLM explanation for Review photos"),
     dry_run: bool = typer.Option(False, "-n", "--dry-run", help="Analyze only, do not write files"),
     force: bool = typer.Option(False, "-f", "--force", help="Ignore cache, reanalyze all photos"),
-    recal: bool = typer.Option(False, "--recal", help="Force redo sharpness threshold sampling"),
+    recalibrate: bool = typer.Option(False, "--recalibrate", help="Force redo sharpness threshold sampling"),
     keep: Optional[int] = typer.Option(None, "--keep", help="Score threshold for Keep bucket (default 70)"),
     reject: Optional[int] = typer.Option(None, "--reject", help="Score threshold for Reject bucket (default 40)"),
     jobs: Optional[int] = typer.Option(None, "-j", "--jobs", help="Parallel workers"),
@@ -224,7 +224,7 @@ def scan(
 ) -> None:
     """Scan a directory of photos and sort into Keep / Review / Reject."""
     _do_scan(input_dir, output, config, explain, dry_run, force,
-             recal, keep, reject, jobs, verbose)
+             recalibrate, keep, reject, jobs, verbose)
 
 
 # ── setup ─────────────────────────────────────────────────────────────────────

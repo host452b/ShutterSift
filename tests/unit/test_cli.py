@@ -87,7 +87,11 @@ def test_info_command():
 
 def test_calibrate_hidden_from_top_level_help():
     result = runner.invoke(app, ["--help"])
-    assert "calibrate" not in result.output
+    # The calibrate subcommand should not appear in top-level help
+    # Note: --recalibrate flag may appear; we only care about the subcommand
+    lines = result.output.splitlines()
+    command_lines = [l for l in lines if l.strip().startswith("calibrate")]
+    assert len(command_lines) == 0, "calibrate subcommand should be hidden"
 
 
 def test_force_flag_accepted(tmp_path):
