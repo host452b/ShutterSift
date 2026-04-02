@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -22,11 +23,16 @@ from shuttersift.engine.capabilities import Capabilities
 class _DefaultToScan(typer.core.TyperGroup):
     _SUBCOMMANDS = {"scan", "setup", "info", "calibrate", "--help", "-h", "--version"}
 
-    def parse_args(self, ctx: typer.Context, args: list[str]) -> list[str]:  # type: ignore[override]
+    # Requires typer >= 0.9 / click >= 8.0 for TyperGroup.parse_args(ctx, args) signature.
+    def parse_args(self, ctx, args):  # type: ignore[override]
         non_opt = [a for a in args if not a.startswith("-")]
         if non_opt and non_opt[0] not in self._SUBCOMMANDS:
             args = ["scan"] + list(args)
-        return super().parse_args(ctx, args)
+        try:
+            return super().parse_args(ctx, args)
+        except TypeError:
+            # Fallback for Click versions with a different parse_args signature
+            return super().parse_args(ctx)
 
 
 # Both -h and --help work
@@ -44,7 +50,6 @@ console = Console()
 def _setup_logging(verbose: bool) -> None:
     log_dir = Path.home() / ".shuttersift" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
-    from datetime import datetime
     log_file = log_dir / f"{datetime.now().strftime('%Y-%m-%dT%H-%M-%S')}.log"
     level = logging.DEBUG if verbose else logging.INFO
     logging.basicConfig(
@@ -81,7 +86,8 @@ def _run_auto_calibration(input_dir: Path, cfg: Config) -> Config:
                 variances.append(laplacian_variance(img))
             prog.advance(t)
 
-    if not variances:
+    if len(variances) < 5:
+        console.print("[yellow]Too few readable photos for calibration; using default thresholds.[/]")
         return cfg
 
     variances.sort()
@@ -129,6 +135,7 @@ def _do_scan(
 
     # Auto-calibration: run on first use or when --recalibrate is passed
     if not cfg.calibrated or recalibrate:
+        console.print("[1/3] Detecting capabilities...  ✓")
         label = "Recalibrating" if recalibrate else "Calibrating"
         console.print(f"[2/3] {label} sharpness thresholds...")
         cfg = _run_auto_calibration(input_dir, cfg)
@@ -164,7 +171,8 @@ def _do_scan(
                 explain=explain,
             )
         except Exception as exc:
-            console.print(f"[red]Error:[/] {exc}")
+            logging.getLogger(__name__).exception("Engine error")
+            console.print(f"[red]Error:[/] {exc or type(exc).__name__}")
             raise typer.Exit(1)
 
     _print_summary(result, output_dir, dry_run)
