@@ -102,7 +102,7 @@ class FaceAnalyzer:
         # Corners above lip center = smile
         smile = max(0.0, min(1.0, (lip_center_y - (left_corner_y + right_corner_y) / 2) * 10))
 
-        # EAR: ~0.30 open, ~0.05 closed. Normalise: blink if EAR < 0.15
+        # EAR: ~0.30 open, ~0.05 closed. Fully open at EAR >= 0.25, fully closed at EAR = 0.
         # Convert to "blink probability": 1 = fully closed
         left_blink = max(0.0, min(1.0, 1.0 - (left_ear / 0.25)))
         right_blink = max(0.0, min(1.0, 1.0 - (right_ear / 0.25)))

@@ -1,5 +1,5 @@
 # tests/unit/analyzers/test_face.py
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 import numpy as np
 from shuttersift.engine.analyzers.face import FaceAnalyzer, FaceResult
 
@@ -48,9 +48,6 @@ def test_detection_without_mesh_returns_partial(monkeypatch):
     from shuttersift.engine import analyzers  # noqa: F401
     import shuttersift.engine.analyzers.face as face_mod
 
-    # Reset state so we can control _MP_LOADED
-    face_mod._MP_LOADED = True
-
     mock_det = MagicMock()
     mock_bbox = MagicMock()
     mock_bbox.xmin = 0.1
@@ -70,8 +67,9 @@ def test_detection_without_mesh_returns_partial(monkeypatch):
     mock_mesh_obj = MagicMock()
     mock_mesh_obj.process.return_value = mock_mesh
 
-    face_mod._face_detection = mock_detection_obj
-    face_mod._face_mesh = mock_mesh_obj
+    monkeypatch.setattr(face_mod, "_MP_LOADED", True)
+    monkeypatch.setattr(face_mod, "_face_detection", mock_detection_obj)
+    monkeypatch.setattr(face_mod, "_face_mesh", mock_mesh_obj)
 
     analyzer = face_mod.FaceAnalyzer()
     img = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -79,8 +77,3 @@ def test_detection_without_mesh_returns_partial(monkeypatch):
 
     assert result.count == 1
     assert result.face_quality_score == 60.0
-
-    # Restore state
-    face_mod._MP_LOADED = False
-    face_mod._face_detection = None
-    face_mod._face_mesh = None
