@@ -10,7 +10,7 @@ def test_score_in_range(normal_image):
 
 
 def test_brisque_fallback_when_pyiqa_unavailable(normal_image, monkeypatch):
-    """Should fall back to BRISQUE (scikit-image) without pyiqa."""
+    """Should fall back to BRISQUE (OpenCV) without pyiqa."""
     monkeypatch.setattr(
         "shuttersift.engine.analyzers.aesthetic._PYIQA_AVAILABLE", False
     )
