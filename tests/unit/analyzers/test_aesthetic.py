@@ -1,4 +1,5 @@
 # tests/unit/analyzers/test_aesthetic.py
+import cv2
 from unittest.mock import MagicMock
 from shuttersift.engine.analyzers.aesthetic import AestheticAnalyzer
 
@@ -14,9 +15,13 @@ def test_laplacian_fallback_when_brisque_unavailable(normal_image, monkeypatch):
     monkeypatch.setattr(
         "shuttersift.engine.analyzers.aesthetic._PYIQA_AVAILABLE", False
     )
+    mock_quality = MagicMock()
+    mock_quality.QualityBRISQUE_compute.side_effect = Exception("no model files")
+    monkeypatch.setattr(cv2, "quality", mock_quality, raising=False)
     analyzer = AestheticAnalyzer(use_gpu=False)
     score = analyzer.score(normal_image)
     assert 0.0 <= score <= 100.0
+    assert score >= 40.0  # Laplacian fallback has floor of 40
 
 
 def test_returns_float(normal_image):
@@ -42,10 +47,9 @@ def test_musiq_backend_selected_when_pyiqa_available(monkeypatch):
 
 def test_brisque_path_when_cv2_quality_available(normal_image, monkeypatch):
     """BRISQUE path: mocked cv2.quality returns a tuple, score is inverted correctly."""
-    import cv2
-    mock_compute = MagicMock(return_value=(30.0,))  # raw BRISQUE=30 → score=70
-    monkeypatch.setattr(cv2, "quality", MagicMock(), raising=False)
-    monkeypatch.setattr("cv2.quality.QualityBRISQUE_compute", mock_compute)
+    mock_quality = MagicMock()
+    mock_quality.QualityBRISQUE_compute.return_value = (30.0,)  # raw BRISQUE=30 → score=70
+    monkeypatch.setattr(cv2, "quality", mock_quality, raising=False)
 
     monkeypatch.setattr(
         "shuttersift.engine.analyzers.aesthetic._PYIQA_AVAILABLE", False
