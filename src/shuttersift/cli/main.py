@@ -94,14 +94,18 @@ def cull(
             progress.update(task_id, completed=current, total=total,
                           description=f"[cyan]{result.path.name}[/]")
 
-        result: AnalysisResult = engine.analyze(
-            input_dir=input_dir,
-            output_dir=output_dir,
-            on_progress=on_progress,
-            resume=not fresh,
-            dry_run=dry_run,
-            explain=explain,
-        )
+        try:
+            result: AnalysisResult = engine.analyze(
+                input_dir=input_dir,
+                output_dir=output_dir,
+                on_progress=on_progress,
+                resume=not fresh,
+                dry_run=dry_run,
+                explain=explain,
+            )
+        except Exception as exc:
+            console.print(f"[red]Error:[/] {exc}")
+            raise typer.Exit(1)
 
     _print_summary(result, output_dir, dry_run)
 
@@ -139,11 +143,16 @@ def download_models(
         console.print("[green]✓[/] MediaPipe models ready")
     else:
         console.print("[red]✗[/] MediaPipe download failed")
+        raise typer.Exit(1)
 
     if vlm:
         console.print("Downloading moondream2 GGUF (~1.7 GB)...")
         ok = download_gguf_vlm()
-        console.print("[green]✓[/] GGUF VLM ready" if ok else "[red]✗[/] GGUF download failed")
+        if ok:
+            console.print("[green]✓[/] GGUF VLM ready")
+        else:
+            console.print("[red]✗[/] GGUF download failed")
+            raise typer.Exit(1)
 
 
 @app.command()
