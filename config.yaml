@@ -1,0 +1,19 @@
+# ShutterSift default configuration
+# All values can be overridden via CLI flags or environment variables.
+
+scoring:
+  weights:
+    sharpness: 0.30
+    exposure: 0.15
+    aesthetic: 0.25
+    face_quality: 0.20
+    composition: 0.10
+  thresholds:
+    keep: 70
+    reject: 40
+    hard_reject_sharpness: 30.0
+    eye_open_min: 0.25
+    burst_gap_seconds: 2.0
+
+workers: 4
+log_retention_runs: 30

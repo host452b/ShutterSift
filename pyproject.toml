@@ -1,0 +1,56 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "shuttersift"
+version = "0.1.0"
+description = "AI-powered photo culling CLI for photographers"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = [
+    # Image I/O
+    "rawpy>=0.21",
+    "opencv-python-headless>=4.10",
+    "Pillow>=10.4",
+    "numpy>=1.26",
+    "scikit-image>=0.22",
+    "exifread>=3.0",
+    # Face analysis (Apple Silicon: install mediapipe-silicon manually if this fails)
+    "mediapipe>=0.10",
+    # Quality assessment (pulls torch)
+    "pyiqa>=0.1.9",
+    "torch>=2.1",
+    # Dedup
+    "ImageHash>=4.3",
+    # VLM local (CPU wheels on PyPI; for Metal: reinstall with --extra-index-url)
+    "llama-cpp-python>=0.2.90",
+    # VLM cloud
+    "anthropic>=0.34",
+    "openai>=1.45",
+    # Config
+    "pydantic-settings>=2.3",
+    "pyyaml>=6.0",
+    # CLI
+    "typer>=0.12",
+    "rich>=13.8",
+    # Report
+    "jinja2>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+
+[project.scripts]
+shuttersift = "shuttersift.cli.main:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/shuttersift"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
