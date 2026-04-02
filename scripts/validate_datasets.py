@@ -79,7 +79,7 @@ def _score_image(
         sharp = sharpness_score(img)
         exposure = exposure_score(img)
         face = face_az.analyze(img)
-        aesthetic = aes_az.analyze(img)
+        aesthetic = aes_az.score(img)
         composition = comp_score(img, face.face_bboxes)
 
         sub = SubScores(

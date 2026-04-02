@@ -92,7 +92,7 @@ def benchmark_scores() -> dict[str, dict[str, Any]]:
         sharp = sharpness_score(img)
         exposure = exposure_score(img)
         face = face_az.analyze(img)
-        aesthetic = aes_az.analyze(img)
+        aesthetic = aes_az.score(img)
         composition = comp_score(img, face.face_bboxes)
 
         sub = SubScores(
@@ -189,23 +189,25 @@ class TestCEWOpenEyes:
         )
 
 
-# ── KonIQ-10k: quality score correlation ─────────────────────────────────────
+# ── Quality score correlation (KonIQ-10k or LIVE-Challenge) ──────────────────
+
+_QUALITY_SOURCES = {"KonIQ-10k", "LIVE-Challenge"}
+
 
 class TestKonIQScoring:
     """
-    ShutterSift scores should correlate positively with KonIQ-10k MOS.
+    ShutterSift scores should correlate positively with human MOS scores.
 
-    Because ShutterSift uses sharpness/exposure/face dimensions rather than
-    a global aesthetic model, exact MOS matching is not expected.  We use:
-      - per-quintile soft bounds (≤ 30% miss rate allowed)
-      - Spearman ρ > 0.20 across all KonIQ images (if scipy is installed)
+    Supports KonIQ-10k (MOS 1–5) and LIVE In the Wild / LIVE-Challenge
+    (MOS 0–100). Because ShutterSift uses different quality dimensions than
+    subjective MOS, we use soft bounds (≤ 30% miss rate) and weak Spearman ρ.
     """
 
     def test_high_quality_score_above_minimum(self, ground_truth, benchmark_scores):
         entries = [
             e for e in ground_truth
             if e.get("expected_score_min") is not None
-            and e["source"] == "KonIQ-10k"
+            and e["source"] in _QUALITY_SOURCES
         ]
         if not entries:
             pytest.skip("No KonIQ entries with expected_score_min in ground_truth.json")
@@ -228,10 +230,10 @@ class TestKonIQScoring:
         entries = [
             e for e in ground_truth
             if e.get("expected_score_max") is not None
-            and e["source"] == "KonIQ-10k"
+            and e["source"] in _QUALITY_SOURCES
         ]
         if not entries:
-            pytest.skip("No KonIQ entries with expected_score_max in ground_truth.json")
+            pytest.skip("No quality entries with expected_score_max in ground_truth.json")
 
         misses = [
             f"{e['filename']}: score={benchmark_scores.get(e['filename'], {}).get('composite', '?')} "
@@ -260,12 +262,12 @@ class TestKonIQScoring:
                 e["original_mos"],
             )
             for e in ground_truth
-            if e["source"] == "KonIQ-10k"
+            if e["source"] in _QUALITY_SOURCES
             and e.get("original_mos") is not None
             and e["filename"] in benchmark_scores
         ]
         if len(pairs) < 10:
-            pytest.skip(f"Not enough KonIQ pairs ({len(pairs)} < 10) for correlation")
+            pytest.skip(f"Not enough quality pairs ({len(pairs)} < 10) for correlation")
 
         scores, mos_vals = zip(*pairs)
         rho, pval = spearmanr(scores, mos_vals)
