@@ -17,7 +17,7 @@ dimensions. Results land in organized folders with an interactive HTML report.
 |---------|-------|-------|---------|
 | Core scanning | ✅ | ✅ | ✅ |
 | RAW file decode | ✅ | ✅ | ✅ (needs Visual C++ Redistributable) |
-| GPU acceleration | ✅ Metal | ✅ CUDA | ✅ CUDA |
+| GPU acceleration | ✅ Metal | ✅ CUDA | ✅ CUDA (needs CUDA torch, see below) |
 | Symlinks in output | ✅ | ✅ | ⚠️ Requires Developer Mode or admin |
 | Cloud VLM (`-e`) | ✅ | ✅ | ✅ |
 | Local VLM (`setup --vlm`) | ✅ | ✅ | ✅ |
@@ -57,6 +57,15 @@ pip install git+https://github.com/host452b/ShutterSift.git
 > ```
 
 > **Windows — Python 3.11 recommended:** If `mediapipe` fails on Python 3.12, switch to 3.11.
+>
+> **Windows — GPU acceleration (CUDA):** The default `torch` from PyPI is CPU-only.
+> Install the CUDA build **before** installing ShutterSift:
+> ```cmd
+> pip install torch --index-url https://download.pytorch.org/whl/cu124
+> pip install shuttersift
+> ```
+> Match the index to your driver: `cu124` (CUDA 12.4+) · `cu121` (12.1) · `cu118` (11.8).
+> Verify with `ss info` — GPU should show ✓.
 >
 > **Windows — `ss` / `shuttersift` command not found:** Python's `Scripts` folder
 > is not always on PATH. Fix with one of:
