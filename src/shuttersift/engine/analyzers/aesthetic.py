@@ -70,7 +70,8 @@ class AestheticAnalyzer:
             raw = float(brisque[0])
             # BRISQUE: 0 = perfect, 100 = worst. Invert to match our convention.
             return round(max(0.0, min(100.0, 100.0 - raw)), 2)
-        except Exception:
+        except Exception as e:
+            logger.debug("BRISQUE unavailable (%s), using Laplacian fallback", e)
             # Fallback: use Laplacian-based estimate as last resort
             from .sharpness import sharpness_score
-            return sharpness_score(img) * 0.6 + 40.0  # bias toward mid-range
+            return round(sharpness_score(img) * 0.6 + 40.0, 2)  # floor: 40, bias toward mid-range
