@@ -115,3 +115,12 @@ def test_old_keep_threshold_rejected(tmp_path):
     photos.mkdir()
     result = runner.invoke(app, [str(photos), "--keep-threshold", "70"])
     assert result.exit_code != 0
+
+
+def test_keep_reject_inversion_rejected(tmp_path):
+    """--keep lower than --reject must fail with a clear error."""
+    photos = tmp_path / "photos"
+    photos.mkdir()
+    result = runner.invoke(app, [str(photos), "--keep", "30", "--reject", "80", "-n"])
+    assert result.exit_code != 0
+    assert "keep" in result.output.lower() or "reject" in result.output.lower()
