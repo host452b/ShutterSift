@@ -62,7 +62,9 @@ def _create_link(src: Path, dest: Path) -> None:
 
 
 def _write_xmp(result: PhotoResult, target_dir: Path) -> None:
-    meta = _DECISION_META[result.decision]
+    meta = _DECISION_META.get(result.decision)
+    if meta is None:
+        raise ValueError(f"Unknown decision '{result.decision}'; expected keep/review/reject")
     xmp_content = _XMP_TEMPLATE.format(
         rating=meta["rating"],
         label=meta["label"],
