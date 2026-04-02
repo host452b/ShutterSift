@@ -50,13 +50,26 @@ def organize(
         _write_xmp(result, target_dir)
 
 
+_symlink_warned = False  # warn once per run, not once per file
+
+
 def _create_link(src: Path, dest: Path) -> None:
+    global _symlink_warned
     if dest.exists() or dest.is_symlink():
         dest.unlink()
     try:
         dest.symlink_to(src.resolve())
     except OSError:
-        # Fallback: copy if symlinks not supported (unusual on Linux/Mac)
+        # Fallback: copy when symlinks are unavailable (common on Windows without
+        # Developer Mode or admin privileges).
+        if not _symlink_warned:
+            from rich.console import Console
+            Console().print(
+                "[yellow]Warning:[/] Symlinks unavailable — copying files instead. "
+                "On Windows, enable Developer Mode or run as Administrator "
+                "to use symlinks."
+            )
+            _symlink_warned = True
         import shutil
         shutil.copy2(src, dest)
 
