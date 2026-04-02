@@ -51,9 +51,4 @@ class AnalysisResult:
         return [p for p in self.photos if p.decision == "reject"]
 
 
-# Engine will be imported here once pipeline.py exists (Task 17).
-# Guard against ImportError during incremental development.
-try:
-    from .pipeline import Engine  # noqa: F401
-except ImportError:
-    pass
+from .pipeline import Engine  # noqa: F401
