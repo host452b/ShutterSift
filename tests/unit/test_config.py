@@ -11,6 +11,7 @@ def test_default_thresholds():
     assert t.reject == 40
     assert t.hard_reject_sharpness == 30.0
     assert t.eye_open_min == 0.25
+    assert t.burst_gap_seconds == 2.0
 
 def test_config_loads_from_yaml(tmp_path):
     yaml_file = tmp_path / "config.yaml"
