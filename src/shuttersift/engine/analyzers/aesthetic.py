@@ -18,10 +18,12 @@ class AestheticAnalyzer:
         self._use_gpu = use_gpu
         self._model = None
         self._backend = "none"
+        self._loaded = False
 
     def _load(self) -> None:
-        if self._model is not None:
+        if self._loaded:
             return
+        self._loaded = True
         if _PYIQA_AVAILABLE:
             try:
                 device = "cuda" if self._use_gpu else "cpu"
