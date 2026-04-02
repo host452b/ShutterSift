@@ -10,8 +10,19 @@ Automatically classifies every photo as **Keep**, **Review**, or **Reject** usin
 
 ## Install
 
+**From PyPI** (once published):
 ```bash
 pip install shuttersift
+```
+
+**From the latest GitHub release** (available now):
+```bash
+pip install https://github.com/host452b/ShutterSift/releases/download/v0.1.0/shuttersift-0.1.0-py3-none-any.whl
+```
+
+**Directly from source**:
+```bash
+pip install git+https://github.com/host452b/ShutterSift.git
 ```
 
 > **Apple Silicon (M1/M2):** If `mediapipe` fails to install, run:
