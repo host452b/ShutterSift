@@ -9,6 +9,8 @@ _MP_LOADED = False
 _face_detection = None
 _face_mesh = None
 
+_BLINK_THRESHOLD = 0.5
+
 
 def _ensure_mediapipe():
     global _MP_LOADED, _face_detection, _face_mesh
@@ -47,7 +49,6 @@ class FaceAnalyzer:
             return FaceResult()
 
         import cv2
-        import mediapipe as mp
 
         rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -56,7 +57,6 @@ class FaceAnalyzer:
         if not det_result.detections:
             return FaceResult()
 
-        h, w = img.shape[:2]
         bboxes = []
         for det in det_result.detections:
             bb = det.location_data.relative_bounding_box
@@ -132,11 +132,11 @@ class FaceAnalyzer:
                 + bs.get("mouthSmileRight", 0.0)
                 + bs.get("cheekSquintLeft", 0.0)
                 + bs.get("cheekSquintRight", 0.0)
-            ) / 4.0
+            ) / 2.0   # cheek squints are not yet implemented, so only 2 terms contribute
             smiles.append(smile)
 
         min_eye_open = min(eyes_open_per_face)
-        all_closed = all(e < 0.25 for e in eyes_open_per_face)
+        all_closed = all(e < _BLINK_THRESHOLD for e in eyes_open_per_face)
         avg_smile = sum(smiles) / len(smiles)
 
         # face_quality_score: 50% eye open + 30% smile + 20% neutral bonus
