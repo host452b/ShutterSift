@@ -17,7 +17,7 @@ ss ./photos
 |------|-------|-------|---------|
 | 核心扫描分析 | ✅ | ✅ | ✅ |
 | RAW 文件解码 | ✅ | ✅ | ✅（需 Visual C++ Redistributable）|
-| GPU 加速 | ✅ Metal | ✅ CUDA | ✅ CUDA |
+| GPU 加速 | ✅ Metal | ✅ CUDA | ✅ CUDA（需单独装 CUDA 版 torch，见下方说明）|
 | 输出文件夹符号链接 | ✅ | ✅ | ⚠️ 需开启开发者模式或以管理员运行 |
 | 云端 VLM（`-e`）| ✅ | ✅ | ✅ |
 | 本地 VLM（`setup --vlm`）| ✅ | ✅ | ✅ |
@@ -57,6 +57,15 @@ pip install git+https://github.com/host452b/ShutterSift.git
 > ```
 
 > **Windows — 推荐使用 Python 3.11**：`mediapipe` 在 Python 3.12 + Windows 上可能安装失败，改用 3.11 即可解决。
+>
+> **Windows — GPU 加速（CUDA）**：PyPI 默认安装的 `torch` 是 CPU-only 版本，MUSIQ 会跑 CPU。
+> 请在安装 ShutterSift **之前**先装带 CUDA 的 torch：
+> ```cmd
+> pip install torch --index-url https://download.pytorch.org/whl/cu124
+> pip install shuttersift
+> ```
+> 根据你的驱动选择版本：`cu124`（CUDA 12.4+）· `cu121`（12.1）· `cu118`（11.8）。
+> 安装后运行 `ss info`，GPU 应显示 ✓。
 >
 > **Windows — `ss` / `shuttersift` 命令找不到**：Python 的 `Scripts` 目录默认不在 PATH 里，可用以下方式修复：
 >
