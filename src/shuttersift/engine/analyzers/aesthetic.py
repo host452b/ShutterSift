@@ -26,14 +26,17 @@ class AestheticAnalyzer:
         self._loaded = True
         if _PYIQA_AVAILABLE:
             try:
-                device = "cuda" if self._use_gpu else "cpu"
-                # Try MPS on Apple Silicon
-                try:
-                    import torch
-                    if torch.backends.mps.is_available() and self._use_gpu:
-                        device = "mps"
-                except Exception:
-                    pass
+                # Priority: CUDA → Metal (MPS) → CPU
+                device = "cpu"
+                if self._use_gpu:
+                    try:
+                        import torch
+                        if torch.cuda.is_available():
+                            device = "cuda"
+                        elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                            device = "mps"
+                    except Exception:
+                        pass
                 self._model = pyiqa.create_metric("musiq", device=device)
                 self._backend = "musiq"
                 logger.info("Aesthetic backend: MUSIQ (%s)", device)
