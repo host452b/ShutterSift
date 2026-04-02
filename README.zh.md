@@ -58,6 +58,22 @@ pip install git+https://github.com/host452b/ShutterSift.git
 
 > **Windows — 推荐使用 Python 3.11**：`mediapipe` 在 Python 3.12 + Windows 上可能安装失败，改用 3.11 即可解决。
 >
+> **Windows — `ss` / `shuttersift` 命令找不到**：Python 的 `Scripts` 目录默认不在 PATH 里，可用以下方式修复：
+>
+> **方式 A — 虚拟环境（推荐）：**
+> ```cmd
+> python -m venv ss-env
+> ss-env\Scripts\activate
+> pip install git+https://github.com/host452b/ShutterSift.git
+> ss --help
+> ```
+>
+> **方式 B — 永久加入 PATH：**
+> 1. 搜索 **"编辑系统环境变量"**
+> 2. 点击 **环境变量 → Path → 编辑**
+> 3. 新增：`C:\Users\<你的用户名>\AppData\Local\Programs\Python\Python311\Scripts`
+> 4. 重启终端
+>
 > **Windows — 符号链接**：输出文件夹默认使用符号链接。如不满足以下条件，会自动改为文件复制（并显示黄色警告）：
 > 1. 打开 **设置 → 隐私和安全性 → 开发者选项**
 > 2. 开启 **开发者模式**
@@ -84,6 +100,7 @@ start shuttersift_output\report.html             # Windows
 首次运行时会自动根据你的照片库校准锐度阈值，**无需任何手动配置**。
 
 `ss` 和 `shuttersift` 都是合法的命令名，两者等价，用哪个都行。
+`-h` 和 `--help` 在所有子命令上均可使用。
 
 ---
 
