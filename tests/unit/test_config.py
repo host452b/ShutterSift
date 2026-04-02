@@ -24,3 +24,10 @@ def test_config_defaults_without_file():
     cfg = Config()
     assert cfg.weights.sharpness == 0.30
     assert cfg.workers == 4
+
+def test_invalid_weights_raise():
+    from pydantic import ValidationError
+    import pytest
+    with pytest.raises(ValidationError):
+        ScoringWeights(sharpness=0.50, exposure=0.15, aesthetic=0.25,
+                       face_quality=0.20, composition=0.10)  # sums to 1.20
