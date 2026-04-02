@@ -10,7 +10,7 @@ def _try_import(module: str) -> bool:
     try:
         __import__(module)
         return True
-    except ImportError:
+    except Exception:
         return False
 
 
@@ -20,7 +20,7 @@ def _has_gpu() -> bool:
         return torch.cuda.is_available() or (
             hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
         )
-    except ImportError:
+    except Exception:
         return False
 
 
