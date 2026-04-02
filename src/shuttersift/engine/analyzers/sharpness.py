@@ -3,7 +3,7 @@ import math
 import numpy as np
 import cv2
 
-_MAX_SHARP_VAR = 500.0
+_MAX_SHARP_VAR = 1500.0
 _BLUR_FLOOR = 2.0
 
 

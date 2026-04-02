@@ -1,4 +1,5 @@
 # tests/unit/test_loader.py
+import sys
 import numpy as np
 import cv2
 import pytest
@@ -38,3 +39,12 @@ def test_load_corrupt_file_returns_none(tmp_path):
     path.write_bytes(b"not an image at all")
     img = load_image(path)
     assert img is None
+
+
+def test_load_raw_without_rawpy_returns_none(tmp_path, monkeypatch):
+    """load_image returns None for RAW files when rawpy is not available."""
+    raw_file = tmp_path / "test.cr2"
+    raw_file.write_bytes(b"not a real raw file")
+    monkeypatch.setitem(sys.modules, "rawpy", None)
+    result = load_image(raw_file)
+    assert result is None
