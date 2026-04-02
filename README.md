@@ -58,6 +58,23 @@ pip install git+https://github.com/host452b/ShutterSift.git
 
 > **Windows — Python 3.11 recommended:** If `mediapipe` fails on Python 3.12, switch to 3.11.
 >
+> **Windows — `ss` / `shuttersift` command not found:** Python's `Scripts` folder
+> is not always on PATH. Fix with one of:
+>
+> **Option A — Virtual environment (recommended):**
+> ```cmd
+> python -m venv ss-env
+> ss-env\Scripts\activate
+> pip install git+https://github.com/host452b/ShutterSift.git
+> ss --help
+> ```
+>
+> **Option B — Add Scripts to PATH permanently:**
+> 1. Search for **"Edit the system environment variables"**
+> 2. Click **Environment Variables → Path → Edit**
+> 3. Add: `C:\Users\<you>\AppData\Local\Programs\Python\Python311\Scripts`
+> 4. Restart your terminal
+>
 > **Windows — symlinks:** Output folders use symlinks by default. Without the steps
 > below, files are copied instead (a yellow warning will appear):
 > 1. Open **Settings → Privacy & Security → For Developers**
@@ -86,6 +103,7 @@ Sharpness thresholds are calibrated automatically on first run based on your
 photo library. No configuration needed.
 
 Both `ss` and `shuttersift` are valid command names — use whichever you prefer.
+Both `-h` and `--help` are supported on every command.
 
 ---
 
