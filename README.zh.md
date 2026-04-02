@@ -11,6 +11,23 @@ ss ./photos
 
 ---
 
+## 平台支持
+
+| 功能 | macOS | Linux | Windows |
+|------|-------|-------|---------|
+| 核心扫描分析 | ✅ | ✅ | ✅ |
+| RAW 文件解码 | ✅ | ✅ | ✅（需 Visual C++ Redistributable）|
+| GPU 加速 | ✅ Metal | ✅ CUDA | ✅ CUDA |
+| 输出文件夹符号链接 | ✅ | ✅ | ⚠️ 需开启开发者模式或以管理员运行 |
+| 云端 VLM（`-e`）| ✅ | ✅ | ✅ |
+| 本地 VLM（`setup --vlm`）| ✅ | ✅ | ✅ |
+| Lightroom XMP 导入 | ✅ | ✅ | ✅ |
+| Python 版本 | 3.11 / 3.12 | 3.11 / 3.12 | 推荐 3.11 |
+
+> **Windows 上的 mediapipe**：Python 3.12 可能存在兼容问题，安装失败时请改用 Python 3.11。
+
+---
+
 ## 安装
 
 **从 PyPI 安装**（发布后可用）：
@@ -39,6 +56,11 @@ pip install git+https://github.com/host452b/ShutterSift.git
 > pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/metal
 > ```
 
+> **Windows**：推荐使用 Python 3.11。`mediapipe` 在 Python 3.12 + Windows 上
+> 可能存在兼容性问题。输出文件夹中的符号链接需要开启开发者模式
+>（`设置 → 隐私和安全性 → 开发者选项 → 开发者模式`）或以管理员身份运行——
+> 否则会自动改为文件复制并显示警告提示。
+
 ---
 
 ## 快速开始
@@ -51,8 +73,9 @@ ss setup
 ss ./photos
 
 # 第三步 — 查看报告
-open shuttersift_output/report.html      # macOS
-xdg-open shuttersift_output/report.html  # Linux
+open shuttersift_output/report.html              # macOS
+xdg-open shuttersift_output/report.html          # Linux
+start shuttersift_output\report.html             # Windows
 ```
 
 首次运行时会自动根据你的照片库校准锐度阈值，**无需任何手动配置**。
