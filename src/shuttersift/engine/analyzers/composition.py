@@ -6,7 +6,9 @@ _THIRDS_NODES = [
     (1/3, 1/3), (2/3, 1/3),
     (1/3, 2/3), (2/3, 2/3),
 ]
-_CENTER = (0.5, 0.5)
+# Max distance from any thirds node to a frame corner is ~0.47; 0.4 captures
+# the "close enough" zone without penalising the entire frame.
+_THIRDS_FALLOFF = 0.4
 
 
 def composition_score(
@@ -15,6 +17,7 @@ def composition_score(
 ) -> float:
     """
     Rule-based composition score [0–100].
+    img is accepted for API consistency but currently unused.
     No faces → neutral 50.
     Faces present → score by:
       - Proximity to rule-of-thirds nodes (+40)
@@ -32,6 +35,11 @@ def composition_score(
 
 def _score_single_face(bbox: tuple[float, float, float, float]) -> float:
     x1, y1, x2, y2 = bbox
+    # Normalize: ensure x1 <= x2 and y1 <= y2
+    if x2 < x1:
+        x1, x2 = x2, x1
+    if y2 < y1:
+        y1, y2 = y2, y1
     cx = (x1 + x2) / 2
     cy = (y1 + y2) / 2
     face_w = x2 - x1
@@ -44,7 +52,7 @@ def _score_single_face(bbox: tuple[float, float, float, float]) -> float:
         ((cx - nx)**2 + (cy - ny)**2) ** 0.5
         for nx, ny in _THIRDS_NODES
     )
-    thirds_score = max(0.0, 40.0 * (1.0 - min_thirds_dist / 0.4))
+    thirds_score = max(0.0, 40.0 * (1.0 - min_thirds_dist / _THIRDS_FALLOFF))
     score += thirds_score
 
     # 2. Not clipped at edges (max 30 pts)
