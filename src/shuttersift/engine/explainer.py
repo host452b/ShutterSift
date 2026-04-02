@@ -18,10 +18,13 @@ try:
 except ImportError:
     openai = None  # type: ignore
 
-_PROMPT_TEMPLATE = """\
-你是专业摄影师。请评价这张照片，重点关注：清晰度、曝光、构图、人物表情。
-已有技术评分：综合分 {score:.0f}/100，清晰度 {sharpness:.0f}，曝光 {exposure:.0f}，审美 {aesthetic:.0f}。
-用1-2句话说明是否值得保留，指出最主要的问题或亮点。"""
+_PROMPT_TEMPLATE = (
+    "You are a professional photographer reviewing an image. "
+    "Technical scores: overall {score:.0f}/100, sharpness {sharpness:.0f}, "
+    "exposure {exposure:.0f}, aesthetic {aesthetic:.0f}. "
+    "In 1-2 sentences, explain whether this photo is worth keeping "
+    "and identify its main strength or weakness."
+)
 
 
 class Explainer:
@@ -36,7 +39,7 @@ class Explainer:
         self._gguf_path = gguf_path
         self._api_key_anthropic = api_key_anthropic
         self._api_key_openai = api_key_openai
-        self._gguf_model = None
+        self._moondream_model = None
 
     def explain(self, photo_path: Path, result: PhotoResult) -> str:
         """Return explanation string; empty string if VLM unavailable or not review."""
@@ -50,9 +53,9 @@ class Explainer:
             aesthetic=result.sub_scores.aesthetic,
         )
 
-        # Priority: GGUF local → Anthropic API → OpenAI API → skip
-        if self._gguf_path:
-            text = self._explain_gguf(photo_path, prompt)
+        # Priority: local Moondream → Anthropic API → OpenAI API → skip
+        if self._gguf_path and self._gguf_path.exists():
+            text = self._explain_moondream(photo_path, prompt)
             if text:
                 return text
 
@@ -72,11 +75,9 @@ class Explainer:
         """Read image and return base64-encoded JPEG bytes."""
         try:
             import cv2
-            import numpy as np
             img = cv2.imread(str(path))
             if img is None:
                 return None
-            # Resize to max 1024px on longest side for API efficiency
             h, w = img.shape[:2]
             if max(h, w) > 1024:
                 scale = 1024 / max(h, w)
@@ -135,46 +136,22 @@ class Explainer:
             logger.warning("OpenAI API error: %s", e)
             return ""
 
-    def _img_bytes(self, path: Path) -> bytes | None:
-        """Read image and return JPEG-encoded bytes (no base64)."""
+    def _explain_moondream(self, path: Path, prompt: str) -> str:
+        """Run local Moondream2 inference on the image."""
         try:
-            import cv2
-            img = cv2.imread(str(path))
-            if img is None:
-                return None
-            h, w = img.shape[:2]
-            if max(h, w) > 1024:
-                scale = 1024 / max(h, w)
-                img = cv2.resize(img, (int(w * scale), int(h * scale)))
-            _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 85])
-            return buf.tobytes()
-        except Exception as e:
-            logger.warning("Could not encode image %s: %s", path.name, e)
-            return None
-
-    def _explain_gguf(self, path: Path, prompt: str) -> str:
+            import moondream as md
+        except ImportError:
+            logger.warning("moondream package not installed; skipping local VLM")
+            return ""
         try:
-            if self._gguf_model is None:
-                from llama_cpp import Llama
-                # Requires a multimodal GGUF (LLaVA-style).
-                # For LLaVA models, clip_model_path must point to the paired CLIP model.
-                # Vision inference will gracefully fall back to Anthropic/OpenAI on error.
-                self._gguf_model = Llama(
-                    model_path=str(self._gguf_path),
-                    n_ctx=2048,
-                    verbose=False,
-                )
-            img_bytes = self._img_bytes(path)
-            if not img_bytes:
-                return ""
-            # llama-cpp-python multimodal (LLaVA-style) prompt
-            output = self._gguf_model(
-                f"USER: <image>\n{prompt}\nASSISTANT:",
-                images=[img_bytes],
-                max_tokens=150,
-                stop=["USER:"],
-            )
-            return output["choices"][0]["text"].strip()
+            if self._moondream_model is None:
+                self._moondream_model = md.vl(model=str(self._gguf_path))
+            image = md.Image.from_path(str(path))
+            result = self._moondream_model.query(image, prompt)
+            # moondream.query returns {"answer": "..."} or a string depending on version
+            if isinstance(result, dict):
+                return result.get("answer", "").strip()
+            return str(result).strip()
         except Exception as e:
-            logger.warning("GGUF inference error: %s", e)
+            logger.warning("Moondream inference error: %s", e)
             return ""
