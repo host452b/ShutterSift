@@ -1,0 +1,7 @@
+{
+  "version": "1",
+  "generated_by": "scripts/build_benchmark.py",
+  "description": "100-image ShutterSift benchmark set. Sources: CEW (closed/open eyes), KonIQ-10k (quality tiers), Google HDR+ burst (multi-frame selection). Run scripts/build_benchmark.py to populate.",
+  "n_images": 0,
+  "images": []
+}
