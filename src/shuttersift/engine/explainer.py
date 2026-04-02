@@ -135,22 +135,42 @@ class Explainer:
             logger.warning("OpenAI API error: %s", e)
             return ""
 
+    def _img_bytes(self, path: Path) -> bytes | None:
+        """Read image and return JPEG-encoded bytes (no base64)."""
+        try:
+            import cv2
+            img = cv2.imread(str(path))
+            if img is None:
+                return None
+            h, w = img.shape[:2]
+            if max(h, w) > 1024:
+                scale = 1024 / max(h, w)
+                img = cv2.resize(img, (int(w * scale), int(h * scale)))
+            _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            return buf.tobytes()
+        except Exception as e:
+            logger.warning("Could not encode image %s: %s", path.name, e)
+            return None
+
     def _explain_gguf(self, path: Path, prompt: str) -> str:
         try:
             if self._gguf_model is None:
                 from llama_cpp import Llama
+                # Requires a multimodal GGUF (LLaVA-style).
+                # For LLaVA models, clip_model_path must point to the paired CLIP model.
+                # Vision inference will gracefully fall back to Anthropic/OpenAI on error.
                 self._gguf_model = Llama(
                     model_path=str(self._gguf_path),
                     n_ctx=2048,
                     verbose=False,
                 )
-            b64 = self._img_b64(path)
-            if not b64:
+            img_bytes = self._img_bytes(path)
+            if not img_bytes:
                 return ""
             # llama-cpp-python multimodal (LLaVA-style) prompt
             output = self._gguf_model(
                 f"USER: <image>\n{prompt}\nASSISTANT:",
-                images=[base64.b64decode(b64)],
+                images=[img_bytes],
                 max_tokens=150,
                 stop=["USER:"],
             )
