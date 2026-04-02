@@ -65,10 +65,15 @@ def download_mediapipe_models() -> bool:
     if dest.exists():
         logger.info("MediaPipe face_landmarker.task already present")
         return True
-    return _download_file(entry["url"], dest)
+    ok = _download_file(entry["url"], dest)
+    if ok:
+        logger.warning("No SHA256 checksum for MediaPipe models — integrity not verified")
+    return ok
 
 
 def download_gguf_vlm(model_key: str = "moondream2_gguf") -> bool:
+    if model_key not in MODEL_REGISTRY:
+        raise ValueError(f"Unknown model key: {model_key!r}. Available: {list(MODEL_REGISTRY)}")
     entry = MODEL_REGISTRY[model_key]
     dest: Path = entry["dest"]
     if dest.exists():
@@ -76,9 +81,12 @@ def download_gguf_vlm(model_key: str = "moondream2_gguf") -> bool:
         return True
     logger.info("Downloading %s (%s)...", dest.name, entry["size_hint"])
     ok = _download_file(entry["url"], dest)
-    if ok and entry["sha256"]:
-        if not verify_sha256(dest, entry["sha256"]):
-            logger.error("SHA256 mismatch for %s — file may be corrupt", dest.name)
-            dest.unlink()
-            return False
+    if ok:
+        if entry["sha256"]:
+            if not verify_sha256(dest, entry["sha256"]):
+                logger.error("SHA256 mismatch for %s — file may be corrupt", dest.name)
+                dest.unlink()
+                return False
+        else:
+            logger.warning("No SHA256 checksum for %s — integrity not verified", dest.name)
     return ok
